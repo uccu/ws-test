@@ -1,0 +1,13 @@
+{
+    
+    "author": {
+        "name": "pzcat",
+        "email": "cat@4moe.com"
+    },
+    "license": "MIT",
+    "dependencies":{
+        
+        "nodejs-websocket":"~1.7.1"
+        
+    }
+}
