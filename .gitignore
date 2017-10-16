@@ -1,0 +1,6 @@
+.vscode
+Log/*.log
+Public/pic/20*
+composer.lock
+vendor
+ws/node_modules

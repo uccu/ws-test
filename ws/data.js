@@ -2,10 +2,14 @@
 "use strict";
 
 
-module.exports = {
+let z = {
     
     
     UserMap     :   new Map,
     ChannelMap   :   new Map
     
 }
+
+
+
+module.exports = z

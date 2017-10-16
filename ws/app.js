@@ -24,7 +24,20 @@ let serverCallback = function(con){
         /** 连接断开执行动作 */
         con.on("close", function (code, reason) {
             
-    
+            if(con.user_id){
+                let user = data.UserMap.get(con.user_id)
+                if(user){
+                    if(user.channel_id){
+                        let channel = data.ChannelMap.get(user.channel_id)
+                        if(channel){
+                            channel.userList.delete(user.id)
+                            if(channel.userList.size == 0)data.ChannelMap.delete(user.channel_id)
+                        }
+                    }
+                    data.UserMap.delete(con.user_id)
+                }
+            }
+            
             console.log("one connection closed")
         });
 
@@ -33,7 +46,19 @@ let serverCallback = function(con){
         /** 连接错误执行动作 */
         con.on("error", function (code, reason) {
     
-
+            if(con.user_id){
+                let user = data.UserMap.get(con.user_id)
+                if(user){
+                    if(user.channel_id){
+                        let channel = data.ChannelMap.get(user.channel_id)
+                        if(channel){
+                            channel.userList.delete(user.id)
+                            if(channel.userList.size == 0)data.ChannelMap.delete(user.channel_id)
+                        }
+                    }
+                    data.UserMap.delete(con.user_id)
+                }
+            }
             console.log("one connection occurred error")
         });
 
@@ -58,7 +83,7 @@ let serverCallback = function(con){
                 action(obj,con)
             }catch(e){
 
-                console.warn(e.message)
+                console.warn(e)
                 con.sendText(content({status:400,message:'something err'}))
             }
     
