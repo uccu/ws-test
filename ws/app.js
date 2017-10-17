@@ -8,9 +8,8 @@ const
     md5 = d => crypto.createHash('md5').update(d).digest('hex'),
     content = d => d instanceof Object ? JSON.stringify(d) : '{}',
     action = require('./action'),
-    data = require('./data');
-
-
+    data = require('./data'),
+    mongo = require('./mongo');
 
 
 let serverCallback = function(con){

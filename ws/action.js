@@ -8,37 +8,60 @@ const
 let
     UserInfo = function(){},
     ChannelInfo = function(){},
-    loginError = function(con){
-        con.sendText(content({status:400,'type':'login',message:'login err'}))
-    },
-    getTime = function(){
-        let d = new Date
-        return d.getHours() + (d.getMinutes() < 10 ? ':0':':')+d.getMinutes()
-    },
-    leaveChannel = function(user){
-
-        if(!user || !user.channel_id)return;
-
-        let 
-            channel_id = user.channel_id,
-            channel = data.ChannelMap.get(channel_id);
-        if(!channel)return;
-
-        /** 删除频道内用户 */
-        channel.userList.delete(user.id)
-
-        /** 如果频道内没有用户则关闭频道 */
-        if(channel.userList.size == 0)data.ChannelMap.delete(channel_id)
-
-        /** 用户的频道设置为0 */
-        user.channel_id = 0;
-        
-        return true
-
-    },
+    MessageBox = function(){},
+    mongo = require('./mongo');
 
 
-z = function(obj,con){
+let loginError = function(con){
+    con.sendText(content({status:400,'type':'login',message:'login err'}))
+};
+let getTime = function(){
+    let d = new Date
+    return d.getHours() + (d.getMinutes() < 10 ? ':0':':')+d.getMinutes()
+};
+let getChannel = function(id,r,j){
+    let channel = data.ChannelMap.get(id)
+    if(!channel){
+        mongo.Cchannel.findOne({id:id},function(w){
+            if(!w){
+                r(w);return
+            }
+            channel = new ChannelInfo
+            channel.master_name = w.master_name
+            channel.master_avatar = w.master_avatar
+            channel.master_id = w.master_id
+            channel.pic = w.pic
+            channel.userList = new Map
+            channel.name = w.name
+            channel.id = w.id
+            if(j)data.ChannelMap.set(channel.id,channel)
+            r(channel)
+        })  
+    }else{
+        r(channel)
+    }
+};
+
+let leaveChannel = function(user){
+
+    if(!user || !user.channel_id)return;
+    let 
+        channel_id = user.channel_id,
+        channel = data.ChannelMap.get(channel_id);
+    if(!channel)return;
+    /** 删除频道内用户 */
+    channel.userList.delete(user.id)
+    /** 如果频道内没有用户则关闭频道 */
+    if(channel.userList.size == 0)data.ChannelMap.delete(channel_id)
+    /** 用户的频道设置为0 */
+    user.channel_id = 0;
+    
+    return true
+
+};
+
+
+let z = function(obj,con){
 
     switch(obj.type){
 
@@ -70,6 +93,70 @@ z = function(obj,con){
             con.sendText(content({status:200,'type':'login',message:'login success'}))
 
             break;
+        }case 'createChannel':{
+
+            if(!obj.channel_id)return;
+            if(!con.user_id){loginError(con);return}
+            let channel_id = obj.channel_id + '';
+            let user = data.UserMap.get(con.user_id)
+            if(!user)return;
+
+            let name = (obj.name + '') || (user.name + '的直播间');
+            let pic = (obj.pic + '').replace(/'|"/ig,'') || '/pic/nopic.jpg';
+            mongo.Cchannel.findOne({id:channel_id},function(r){
+
+                if(r){
+                    con.sendText(content({status:400,message:'channel has been created'}))
+                    return;
+                }
+
+                let now = Date.now();
+
+                mongo.Cchannel.insert(
+                    {
+
+                        id              :   channel_id,
+                        master_id       :   user.id,
+                        name            :   name,
+                        create_time     :   now,
+                        pic             :   pic,
+                        master_name     :   user.name,
+                        master_avatar   :   user.avatar,
+                        end_time        :   0
+
+                    },function(){
+
+                        console.log(channel_id)
+                        getChannel(channel_id,function(c){
+                            if(!c){
+                                console.log(`one channel created err - ${channel_id}`);return
+                            }
+
+                            let ob = {};
+                            ob.channel_id = c.id
+                            ob.master_avatar = c.master_avatar
+                            ob.master_name = c.master_name
+                            ob.name = c.name
+
+                            
+                            c.userList.set(user.id,user)
+                            user.channel_id = channel_id
+                            
+                            console.log(`one channel created - ${channel_id}`)
+                            con.sendText(content({status:200,'type':'enterChannel',data:ob}))
+
+                        },1)
+                        
+
+
+                        
+                    }
+                )
+
+            })
+
+
+            break;
         }case 'enterChannel':{
 
             if(!obj.channel_id)return;
@@ -80,34 +167,26 @@ z = function(obj,con){
             /** 离开所在频道 */
             leaveChannel(user)
 
-            obj.channel_id = obj.channel_id + ''
+            let channel_id = obj.channel_id + ''
             
-            let channel = data.ChannelMap.get(obj.channel_id)
-            if(!channel){
+            getChannel(channel_id,function(c){
+                if(!c){
+                    console.log(`one channel created enter - ${channel_id}`);return
+                }
 
-                channel = new ChannelInfo
-                channel.master = user
-                channel.userList = new Map
-                channel.name = obj.name || user.name + '的直播间'
-                channel.id = obj.channel_id
-                data.ChannelMap.set(obj.channel_id,channel)
+                let ob = {};
+                ob.channel_id = c.id
+                ob.master_avatar = c.master_avatar
+                ob.master_name = c.master_name
+                ob.name = c.name
+                c.userList.set(user.id,user)
+                user.channel_id = channel_id
                 
-            }
+                console.log(`one connection enter channel - ${con.user_id}`)
+                con.sendText(content({status:200,'type':'enterChannel',data:ob}))
 
-            channel.userList.set(user.id,user)
-            user.channel_id = obj.channel_id
+            },1)
 
-            /** 发送成功消息 */
-            console.log(`one connection enter channel - ${con.user_id}`)
-
-            let ob = {};
-            ob.channel_id = channel.id
-            ob.master_avatar = channel.master.avatar
-            ob.master_name = channel.master.name
-            ob.name = channel.name
-
-
-            con.sendText(content({status:200,'type':'enterChannel',data:ob}))
 
             break;
         }case 'sendMessage':{
@@ -122,10 +201,30 @@ z = function(obj,con){
             let channel = data.ChannelMap.get(user.channel_id)
             if(!channel)return;
 
-            channel.userList.forEach(function(user){
-                let t = getTime()
-                user.con.sendText(content({status:200,'type':'getMessage',message:obj.message,time:t,user:{avatar:user.avatar,name:user.name}}))
+            let now = Date.now();
+            let ti = getTime()
+            let message = {
+
+                message     :   obj.message,
+                channel_id  :   channel.id,
+                user_id     :   user.id,
+                user_avatar :   user.avatar,
+                user_name   :   user.name,
+                create_time :   now,
+                time        :   ti
+
+            }
+
+            mongo.Cmessage.insert(message,function(){
+
+                console.log(`user send a message - ${user.id}`);
+                channel.userList.forEach(function(user2){
+                    user2.con.sendText(content({status:200,'type':'getMessage',data:message}))
+                })
             })
+
+
+            
 
 
             break;
@@ -136,23 +235,31 @@ z = function(obj,con){
         case 'getList':
             
             let ob = [];
-
             data.ChannelMap.forEach(function(channel){
-
                 let d = {}
                 d.channel_id = channel.id
                 d.size = channel.userList.size
                 d.name = channel.name
-                d.master_name = channel.master.name
-                d.master_avatar = channel.master.avatar
-
+                d.master_name = channel.master_name
+                d.master_avatar = channel.master_avatar
+                d.pic = channel.pic
                 ob.push(d)
-
             })
             con.sendText(content({status:200,'type':'getList',data:ob}))
+            break;
+        case 'getHistory':{
+
+            let page = parseInt(obj.page) || 1;
+
+
+            mongo.Cmessage.find({},function(r){
+
+                con.sendText(content({type:'getHistory',data:r,page:page}))
+            },{create_time:-1},page,20)
+
 
             break;
-        default:
+        }default:
             break;
     }
 }

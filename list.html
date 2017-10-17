@@ -19,6 +19,7 @@
 
     </head>
     <body style="background:#f5f5f5">
+        <button class="create">create</button>
         <div class="container">
             <div class="Rlist"></div>
             <div class="Rroom row dn">
@@ -50,24 +51,35 @@
             var p = new URL(location);
             var user_id = p.searchParams.get('user_id');
             var ws = new WebSocket('ws://127.0.0.1:7777');
+            var page = 1;
 
             $('form').submit(function(e){
                 e.preventDefault()
                 var m = $('input').val()
                 ws.send(JSON.stringify({'type':'sendMessage',message:m}))
                 $('input').val('')
-            })
+            });
+
+            var showHis = function(){
+                ws.send(JSON.stringify({type:'getHistory',page:page++}))
+            }
+
+            var appendMessage = function(a,n,t,m,p){
+                var w = '<div class="com pr col-xs-12"><img src="'+a+'" class="avatar pa" style="left:10px;top:10px;width:40px;height:40px;border-radius:50%"><div class="com2" style="margin-left:50px;margin-top:10px"><div class="cname">'+n+' <span style="font-size:8px;color:#ccc;">'+t+'</span></div><div class="cnameb" style="border:1px solid #feecd5;background:#fff5e6;padding:5px;border-radius:5px;margin:5px 0">'+m+'</div></div></div>'
+                if(!p)$('.comment').append(w);else $('.comment').prepend(w);
+            }
             ws.onmessage = function(e){
                 try{
                     var d = JSON.parse(e.data)
                     switch(d.type){
                         case 'getList':
+                            
                             if(status.room)return;
                             $('.Rlist,.comment').html('')
                             $('.Rroom').hide()
                             for(var i in d.data){
-
-                                $('.Rlist').append('<div data-channel-id="'+d.data[i].channel_id+'" class="col-xs-12 pr" style="margin-top:10px;/** background-image:url(/pic/nopic.jpg)*/background-color:#555;background-position:center;background-size:cover;border-radius:5px;height:200px"><div class="number pa" style="top:10px;right:10px;color:#fff">当前人数 '+d.data[i].size+'</div><img src="'+d.data[i].master_avatar+'" class="avatar pa" style="bottom:10px;left:10px;width:50px;height:50px;border-radius:50%"><h4 class="name pa" style="bottom:36px;left:80px;color:#fff;margin:0">'+d.data[i].name+'</h4><p class="masterName pa" style="bottom:10px;left:80px;color:#fff;margin:0">'+d.data[i].master_name+'的直播间</p></div>')
+                                $('.create').remove();
+                                $('.Rlist').append('<div data-channel-id="'+d.data[i].channel_id+'" class="col-xs-12 pr" style="margin-top:10px;background-image:url('+d.data[i].pic+');background-color:#555;background-position:center;background-size:cover;border-radius:5px;height:200px"><div class="number pa" style="top:10px;right:10px;color:#fff">当前人数 '+d.data[i].size+'</div><img src="'+d.data[i].master_avatar+'" class="avatar pa" style="bottom:10px;left:10px;width:50px;height:50px;border-radius:50%"><h4 class="name pa" style="bottom:36px;left:80px;color:#fff;margin:0">'+d.data[i].name+'</h4><p class="masterName pa" style="bottom:10px;left:80px;color:#fff;margin:0">'+d.data[i].master_name+'的直播间</p></div>')
                                 
                             }
 
@@ -79,17 +91,32 @@
                             break;
                         case 'enterChannel':
                             status.room = 1
+                            $('.create').remove();
                             $('.Rlist,.comment').html('')
                             $('title').text(d.data.master_name + '的直播间')
                             $('.Rroom').show()
                             $('.Rroom .bot input').css('width',$('body').width()-80)
                             $('.top .name').text(d.data.name||d.data.master_name + '的直播间')
                             $('.top img').attr('src',d.data.master_avatar)
+                            showHis();
+                            $(window).unbind('scroll').bind('scroll',function(){
+                                if($(window).scrollTop() == 0){
+                                    showHis()
+                                }
+                            })
                             break;
                         case 'getMessage':
-
-                            $('.comment').append('<div class="com pr col-xs-12"><img src="'+d.user.avatar+'" class="avatar pa" style="left:10px;top:10px;width:40px;height:40px;border-radius:50%"><div class="com2" style="margin-left:50px;margin-top:10px"><div class="cname">'+d.user.name+' <span style="font-size:8px;color:#ccc;">'+d.time+'</span></div><div class="cnameb" style="border:1px solid #feecd5;background:#fff5e6;padding:5px;border-radius:5px;margin:5px 0">'+d.message.replace('<','&lt;').replace('>','&gt;')+'</div></div></div>')
+                            appendMessage(d.data.user_avatar,d.data.user_name,d.data.time,d.data.message.replace('<','&lt;').replace('>','&gt;'))
                             $(window).scrollTop(999999)
+                            break;
+                        case 'getHistory':
+                            for(var i in d.data)appendMessage(d.data[i].user_avatar,d.data[i].user_name,d.data[i].time,d.data[i].message.replace('<','&lt;').replace('>','&gt;'),1);
+                            if(d.page == 1)$(window).scrollTop(999999)
+                            else if(!d.data.length){
+                                $(window).unbind('scroll');page = 1;
+                            }else{
+                                $(window).scrollTop(72*d.data.length)
+                            }
                             break;
                         default:
                             break;
@@ -105,10 +132,13 @@
             ws.onopen = function(){
 
                 ws.send(JSON.stringify({'type':'getList'}))
-                ws.send(JSON.stringify({'type':'login',id:user_id,name:'name','avatar':'/pic/noavatar.png'}))
+                ws.send(JSON.stringify({'type':'login',id:user_id,name:'user 0000'+user_id,'avatar':'/pic/noavatar.png'}))
             }
 
-            
+            $('.create').click(function(){
+
+                ws.send(JSON.stringify({'type':'createChannel',name:'测试直播间',channel_id:'1',pic:'/pic/nopic.jpgx'}))
+            })
 
             // 
         
