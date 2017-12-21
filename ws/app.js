@@ -90,5 +90,5 @@ let serverCallback = function(con){
     
     }
     
-    let server = ws.createServer(serverCallback).listen(7777)
+    let server = ws.createServer(serverCallback).listen(7778)
     console.log("server started")

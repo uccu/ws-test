@@ -22,21 +22,21 @@ let getTime = function(){
 let getChannel = function(id,r,j){
     let channel = data.ChannelMap.get(id)
     if(!channel){
-        mongo.Cchannel.findOne({id:id},function(w){
-            if(!w){
-                r(w);return
-            }
+        // mongo.Cchannel.findOne({id:id},function(w){
+            // if(!w){
+            //     r(w);return
+            // }
             channel = new ChannelInfo
-            channel.master_name = w.master_name
-            channel.master_avatar = w.master_avatar
-            channel.master_id = w.master_id
-            channel.pic = w.pic
+            channel.master_name = ''
+            channel.master_avatar = ''
+            channel.master_id = ''
+            channel.pic = ''
             channel.userList = new Map
-            channel.name = w.name
-            channel.id = w.id
+            channel.name = ''
+            channel.id = id
             if(j)data.ChannelMap.set(channel.id,channel)
             r(channel)
-        })  
+        // })  
     }else{
         r(channel)
     }
@@ -60,6 +60,8 @@ let leaveChannel = function(user){
 
 };
 
+let host = '121.43.111.114:8280';
+
 
 let z = function(obj,con){
 
@@ -67,7 +69,11 @@ let z = function(obj,con){
 
         case 'login':{
 
-            if(!obj.id)return;
+            if(!obj.id){
+                obj.id = 'x' + data.UserMap.size
+                obj.name = '游客' + data.UserMap.size
+                obj.avatar = 'http://'+host+'/upload/def/photo_placeholder@3x.png'
+            }
             /** 查询用户 */
             obj.id = obj.id + ''
             let user = data.UserMap.get(obj.id)
@@ -90,7 +96,7 @@ let z = function(obj,con){
 
             /** 发送成功消息 */
             console.log(`one connection login - ${con.user_id}`)
-            con.sendText(content({status:200,'type':'login',message:'login success'}))
+            con.sendText(content({status:200,'type':'login',message:'login success',obj:obj}))
 
             break;
         }case 'createChannel':{

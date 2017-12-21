@@ -19,7 +19,7 @@
 
     </head>
     <body style="background:#f5f5f5">
-        <button class="create">create</button>
+        <button class="create"></button>
         <div class="container">
             <div class="Rlist"></div>
             <div class="Rroom row dn">
@@ -49,9 +49,11 @@
             var status = {};
             status.room = 0;
             var p = new URL(location);
-            var user_id = p.searchParams.get('user_id');
-            var ws = new WebSocket('ws://127.0.0.1:7777');
+            var id = p.searchParams.get('id') || '';
+            var token = p.searchParams.get('token') || '';
+            var ws = new WebSocket('ws://www.disuyijian.com:7778');
             var page = 1;
+            var channeInfo;
 
             $('form').submit(function(e){
                 e.preventDefault()
@@ -65,7 +67,7 @@
             }
 
             var appendMessage = function(a,n,t,m,p){
-                var w = '<div class="com pr col-xs-12"><img src="'+a+'" class="avatar pa" style="left:10px;top:10px;width:40px;height:40px;border-radius:50%"><div class="com2" style="margin-left:50px;margin-top:10px"><div class="cname">'+n+' <span style="font-size:8px;color:#ccc;">'+t+'</span></div><div class="cnameb" style="border:1px solid #feecd5;background:#fff5e6;padding:5px;border-radius:5px;margin:5px 0">'+m+'</div></div></div>'
+                var w = '<div class="com pr col-xs-12"><img src="'+a+'" class="avatar pa" style="left:10px;top:10px;width:40px;height:40px;border-radius:50%"><div class="com2" style="margin-left:50px;margin-top:10px"><div class="cname">'+n+' <span style="font-size:8px;color:#ccc;">'+t+'</span></div><div class="cnameb" style="word-break: break-word;border:1px solid #feecd5;background:#fff5e6;padding:5px;border-radius:5px;margin:5px 0">'+m+'</div></div></div>'
                 if(!p)$('.comment').append(w);else $('.comment').prepend(w);
             }
             ws.onmessage = function(e){
@@ -93,11 +95,12 @@
                             status.room = 1
                             $('.create').remove();
                             $('.Rlist,.comment').html('')
-                            $('title').text(d.data.master_name + '的直播间')
+                            $('title').text(channeInfo.title)
                             $('.Rroom').show()
                             $('.Rroom .bot input').css('width',$('body').width()-80)
-                            $('.top .name').text(d.data.name||d.data.master_name + '的直播间')
-                            $('.top img').attr('src',d.data.master_avatar)
+                            $('.top .name').text(channeInfo.title)
+                            $('.top .masterName').html('粉丝数：'+channeInfo.viewer_num+' <span style="margin:0 20px">|</span> 总人气：'+channeInfo.attention_num)
+                            $('.top img').attr('src',channeInfo.head_photo)
                             showHis();
                             $(window).unbind('scroll').bind('scroll',function(){
                                 if($(window).scrollTop() == 0){
@@ -118,6 +121,11 @@
                                 $(window).scrollTop(72*d.data.length)
                             }
                             break;
+                        case 'login':{
+
+                            ws.send(JSON.stringify({'type':'enterChannel',channel_id:id}))
+                            break;
+                        }
                         default:
                             break;
 
@@ -131,8 +139,31 @@
 
             ws.onopen = function(){
 
-                ws.send(JSON.stringify({'type':'getList'}))
-                ws.send(JSON.stringify({'type':'login',id:user_id,name:'user 0000'+user_id,'avatar':'/pic/noavatar.png'}))
+                $.ajax({
+                    url: "http://121.43.111.114:8280/StockService/api/live/get/"+id,
+                    data: {},
+                    type: "post",
+                    beforeSend: function(xhr){
+                        xhr.setRequestHeader('token',token)
+                        console.log(token)
+                    },
+                    success: function(w) {
+
+                        if(!w.success){alert(w.msg);return}
+
+                        channeInfo = w.data
+
+                        if(w.data.loginUser){
+                            ws.send(JSON.stringify({'type':'login',id:channeInfo.loginUser.uid,name:channeInfo.loginUser.uname,'avatar':channeInfo.loginUser.head_photo}))
+                        }else{
+                            ws.send(JSON.stringify({'type':'login'}))
+                        }
+
+                    }
+                });
+
+                // ws.send(JSON.stringify({'type':'getList'}))
+                // 
             }
 
             $('.create').click(function(){
@@ -140,7 +171,8 @@
                 ws.send(JSON.stringify({'type':'createChannel',name:'测试直播间',channel_id:'1',pic:'/pic/nopic.jpgx'}))
             })
 
-            // 
+            
+            
         
         
         </script>
