@@ -11,6 +11,28 @@
         <link rel="stylesheet" href="/css/m.css">
         <style>
             ::-webkit-scrollbar{width:0;height:0}
+            .master::after{
+                content: ' ';
+                background-image: url(pic/bz_03.png);
+                width: 52px;
+                height: 15px;
+                position: absolute;
+                background-repeat: no-repeat;
+                background-size: 100%;
+                bottom: 21px;
+                left: 4px;
+            }
+            .ddscc::after{
+                content: ' ';
+                background-image: url(pic/hongbao1.png);
+                width: 48px;
+                height: 32px;
+                position: absolute;
+                background-repeat: no-repeat;
+                background-size: 100%;
+                top: 6px;
+                right: -27px;
+            }
         </style>
         <script src="//apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
         <script src="//apps.bdimg.com/libs/bootstrap/3.3.4/js/bootstrap.min.js"></script>
@@ -35,9 +57,9 @@
 
                 <div class="bot pf" style="bottom:0;left:0;height:50px;width:100%;background:#fff">
                     <form action="" onsubmit="">
-                        <input name="y" style="margin-top:10px;width:77%;border:solid #ccc 1px;line-height:30px;padding:0 10px;margin-left:10px;outline:0">
-                        <a class="pa" style="display:inline;background:red;border-radius:50%;color:#fff;border:0;padding:3px 6px;right:40px;bottom:12px">赏</a>
-                        <a class="pa" style="display:inline;background:blue;border-radius:50%;color:#fff;border:0;padding:3px 6px;right:10px;bottom:12px">问</a>
+                        <input name="y" style="margin-top:10px;width: calc(100% - 55px);border:solid #ccc 1px;line-height:30px;padding:0 10px;margin-left:10px;outline:0">
+                        <a class="pa" style="display:inline;background:red;border-radius:50%;color:#fff;border:0;padding:3px 6px;right:10px;bottom:12px">赏</a>
+                        <a class="pa" style="display:none;background:blue;border-radius:50%;color:#fff;border:0;padding:3px 6px;right:10px;bottom:12px">问</a>
                     </form>
                 </div>
 
@@ -53,6 +75,7 @@
             var token = p.searchParams.get('token') || '';
             var ws = new WebSocket('ws://www.disuyijian.com:7778');
             var page = 1;
+            var user_id;
             var channeInfo;
 
             $('form').submit(function(e){
@@ -66,9 +89,22 @@
                 ws.send(JSON.stringify({type:'getHistory',page:page++}))
             }
 
-            var appendMessage = function(a,n,t,m,p){
-                var w = '<div class="com pr col-xs-12"><img src="'+a+'" class="avatar pa" style="left:10px;top:10px;width:40px;height:40px;border-radius:50%"><div class="com2" style="margin-left:50px;margin-top:10px"><div class="cname">'+n+' <span style="font-size:8px;color:#ccc;">'+t+'</span></div><div class="cnameb" style="word-break: break-word;border:1px solid #feecd5;background:#fff5e6;padding:5px;border-radius:5px;margin:5px 0">'+m+'</div></div></div>'
+            var appendMessage = function(d,p){
+                let a=d.user_avatar,n=d.user_name,t=d.time,m=d.message.replace('<','&lt;').replace('>','&gt;')
+                var w;
+                if(d.mode == 1){
+                    w = $('<div class="com pr col-xs-12" user-id="'+d.user_id+'"><div class="com2" style="margin-left:10px;margin-top:10px"><div class="cnameb ddscc" style="position:relative;word-break: break-word;border:1px solid #feecd5;background:#fff;padding:10px 20px;border-radius:5px;margin:5px 0;display: inline-block;">'+d.message+'</div></div></div>')
+                }
+                else if(d.user_id == user_id){
+                    w = $('<div class="com pr col-xs-12" user-id="'+d.user_id+'"><img src="'+a+'" class="avatar pa" style="right:10px;top:10px;width:40px;height:40px;border-radius:50%"><div class="com2" style="margin-right:50px;margin-top:10px;text-align: right;"><div class="cname" style="text-align: right;"><span style="font-size:8px;color:#ccc;">'+t+'</span> '+n+' </div><div class="cnameb" style="word-break: break-word;border:1px solid #feecd5;background:#fff5e6;padding:5px 10px;border-radius:5px;margin:5px 0;display: inline-block;text-align: left;">'+m+'</div></div></div>')
+                }else{
+                    w = $('<div class="com pr col-xs-12" user-id="'+d.user_id+'"><img src="'+a+'" class="avatar pa" style="left:10px;top:10px;width:40px;height:40px;border-radius:50%"><div class="com2" style="margin-left:50px;margin-top:10px"><div class="cname">'+n+' <span style="font-size:8px;color:#ccc;">'+t+'</span></div><div class="cnameb" style="word-break: break-word;border:1px solid #feecd5;background:#fff5e6;padding:5px 10px;border-radius:5px;margin:5px 0;display: inline-block;">'+m+'</div></div></div>')
+                }
                 if(!p)$('.comment').append(w);else $('.comment').prepend(w);
+                if(d.user_id == channeInfo.user_id){
+                    w.find('.avatar').parent().addClass('master')
+                    
+                }
             }
             ws.onmessage = function(e){
                 try{
@@ -97,7 +133,15 @@
                             $('.Rlist,.comment').html('')
                             $('title').text(channeInfo.title)
                             $('.Rroom').show()
-                            $('.Rroom .bot input').css('width',$('body').width()-80)
+                            if(!channeInfo.isShow && d.user_id != user_id ){
+                                $('.Rroom .bot input').css('width',$('body').width()-20)
+                                $('.Rroom .bot a').css('display','none')
+                            }else{
+                                $('.Rroom .bot a').unbind('click').bind('click',function(){
+                                    location.href='money'
+                                })
+                            }
+                            // 
                             $('.top .name').text(channeInfo.title)
                             $('.top .masterName').html('粉丝数：'+channeInfo.viewer_num+' <span style="margin:0 20px">|</span> 总人气：'+channeInfo.attention_num)
                             $('.top img').attr('src',channeInfo.head_photo)
@@ -109,11 +153,11 @@
                             })
                             break;
                         case 'getMessage':
-                            appendMessage(d.data.user_avatar,d.data.user_name,d.data.time,d.data.message.replace('<','&lt;').replace('>','&gt;'))
+                            appendMessage(d.data)
                             $(window).scrollTop(999999)
                             break;
                         case 'getHistory':
-                            for(var i in d.data)appendMessage(d.data[i].user_avatar,d.data[i].user_name,d.data[i].time,d.data[i].message.replace('<','&lt;').replace('>','&gt;'),1);
+                            for(var i in d.data)appendMessage(d.data[i],1);
                             if(d.page == 1)$(window).scrollTop(999999)
                             else if(!d.data.length){
                                 $(window).unbind('scroll');page = 1;
@@ -122,7 +166,7 @@
                             }
                             break;
                         case 'login':{
-
+                            user_id = d.obj.id
                             ws.send(JSON.stringify({'type':'enterChannel',channel_id:id}))
                             break;
                         }
@@ -145,7 +189,6 @@
                     type: "post",
                     beforeSend: function(xhr){
                         xhr.setRequestHeader('token',token)
-                        console.log(token)
                     },
                     success: function(w) {
 
@@ -165,6 +208,9 @@
                 // ws.send(JSON.stringify({'type':'getList'}))
                 // 
             }
+            ws.onclose = function(){
+                alert('连接断开')
+            }
 
             $('.create').click(function(){
 
@@ -172,7 +218,13 @@
             })
 
             
-            
+            var showMoney = function(m){
+
+                user_id;
+                channeInfo.user_id;
+                if(channeInfo.loginUser)ws.send(JSON.stringify({type:'sendMessage',mode:1,money:m}))
+                // alert('某某某打赏了'+m+'元')
+            }
         
         
         </script>

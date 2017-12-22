@@ -6,6 +6,7 @@ const
     data = require('./data');
 
 let
+    yoo = 0,
     UserInfo = function(){},
     ChannelInfo = function(){},
     MessageBox = function(){},
@@ -70,8 +71,9 @@ let z = function(obj,con){
         case 'login':{
 
             if(!obj.id){
-                obj.id = 'x' + data.UserMap.size
-                obj.name = '游客' + data.UserMap.size
+                yoo++
+                obj.id = 'x' + yoo
+                obj.name = '游客' + yoo
                 obj.avatar = 'http://'+host+'/upload/def/photo_placeholder@3x.png'
             }
             /** 查询用户 */
@@ -201,6 +203,13 @@ let z = function(obj,con){
             let user = data.UserMap.get(con.user_id)
             if(!user)return;
             if(!user.channel_id)return;
+
+            let mode = obj.mode || 0;
+            let money = obj.money || 0
+            if(mode == 1){
+                obj.message = '<span style="color:blueviolet">'+user.name+'</span>打赏主播<span style="color:red">￥'+obj.money + '</span>'
+            }
+
             if(!obj.message)return;
             if(typeof obj.message != 'string')return;
 
@@ -209,6 +218,8 @@ let z = function(obj,con){
 
             let now = Date.now();
             let ti = getTime()
+            
+
             let message = {
 
                 message     :   obj.message,
@@ -217,6 +228,7 @@ let z = function(obj,con){
                 user_avatar :   user.avatar,
                 user_name   :   user.name,
                 create_time :   now,
+                mode        :   mode,
                 time        :   ti
 
             }
@@ -225,7 +237,7 @@ let z = function(obj,con){
 
                 console.log(`user send a message - ${user.id}`);
                 channel.userList.forEach(function(user2){
-                    user2.con.sendText(content({status:200,'type':'getMessage',data:message}))
+                    user2.con.sendText(content({status:200,'type':'getMessage',data:message,mode:mode}))
                 })
             })
 
