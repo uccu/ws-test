@@ -246,7 +246,27 @@ let z = function(obj,con){
 
 
             break;
-        }case 'sendImg':
+        }case 'close':
+
+
+            if(!con.user_id){loginError(con);return}
+            let user = data.UserMap.get(con.user_id)
+            if(!user)return;
+            if(!user.channel_id)return;
+
+            
+
+            let channel = data.ChannelMap.get(user.channel_id)
+            if(!channel)return;
+
+
+            channel.userList.forEach(function(user2){
+                user2.con.sendText(content({status:200,'type':'close'}))
+            })
+
+
+            break;
+        case 'sendImg':
             break;
         case 'sendLink':
             break;
@@ -270,7 +290,7 @@ let z = function(obj,con){
             let page = parseInt(obj.page) || 1;
 
 
-            mongo.Cmessage.find({},function(r){
+            mongo.Cmessage.find({channel_id  : obj.channel_id+''},function(r){
 
                 con.sendText(content({type:'getHistory',data:r,page:page}))
             },{create_time:-1},page,20)

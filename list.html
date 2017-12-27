@@ -19,8 +19,12 @@
                 position: absolute;
                 background-repeat: no-repeat;
                 background-size: 100%;
-                bottom: 21px;
+                bottom: 20px;
                 left: 4px;
+            }
+            .master.my::after{
+                left: auto;
+                right: 5px;
             }
             .ddscc::after{
                 content: ' ';
@@ -50,8 +54,9 @@
                     <img src="/pic/noavatar.png" class="avatar pa" style="bottom:10px;left:10px;width:50px;height:50px;border-radius:50%">
                     <h4 class="name pa" style="bottom:36px;left:80px;color:#fff;margin:0">xxx的直播间</h4>
                     <p class="masterName pa" style="bottom:10px;left:80px;color:#fff;margin:0;font-size:12px">粉丝数：1000 <span style="margin:0 20px">|</span> 总人气：2000</p>
+                    <a class="closem" style="position: absolute;color: white;border: solid #fff 1px;padding: 0 6px;border-radius: 5px;right: 10px;bottom: 10px;cursor: pointer;display:none" href="javascript:closem()">关闭</a>
                 </div>
-                <div class="comment dt" style="padding-bottom:60px;padding-top:70px">
+                <div class="comment dt" style="padding-bottom:60px;padding-top:70px;width:100%">
                     
                 </div>
 
@@ -86,7 +91,7 @@
             });
 
             var showHis = function(){
-                ws.send(JSON.stringify({type:'getHistory',page:page++}))
+                ws.send(JSON.stringify({type:'getHistory',page:page++,channel_id:channeInfo.id}))
             }
 
             var appendMessage = function(d,p){
@@ -96,7 +101,7 @@
                     w = $('<div class="com pr col-xs-12" user-id="'+d.user_id+'"><div class="com2" style="margin-left:10px;margin-top:10px"><div class="cnameb ddscc" style="position:relative;word-break: break-word;border:1px solid #feecd5;background:#fff;padding:10px 20px;border-radius:5px;margin:5px 0;display: inline-block;">'+d.message+'</div></div></div>')
                 }
                 else if(d.user_id == user_id){
-                    w = $('<div class="com pr col-xs-12" user-id="'+d.user_id+'"><img src="'+a+'" class="avatar pa" style="right:10px;top:10px;width:40px;height:40px;border-radius:50%"><div class="com2" style="margin-right:50px;margin-top:10px;text-align: right;"><div class="cname" style="text-align: right;"><span style="font-size:8px;color:#ccc;">'+t+'</span> '+n+' </div><div class="cnameb" style="word-break: break-word;border:1px solid #feecd5;background:#fff5e6;padding:5px 10px;border-radius:5px;margin:5px 0;display: inline-block;text-align: left;">'+m+'</div></div></div>')
+                    w = $('<div class="com pr col-xs-12 my" user-id="'+d.user_id+'"><img src="'+a+'" class="avatar pa" style="right:10px;top:10px;width:40px;height:40px;border-radius:50%"><div class="com2" style="margin-right:50px;margin-top:10px;text-align: right;"><div class="cname" style="text-align: right;"><span style="font-size:8px;color:#ccc;">'+t+'</span> '+n+' </div><div class="cnameb" style="word-break: break-word;border:1px solid #feecd5;background:#fff5e6;padding:5px 10px;border-radius:5px;margin:5px 0;display: inline-block;text-align: left;">'+m+'</div></div></div>')
                 }else{
                     w = $('<div class="com pr col-xs-12" user-id="'+d.user_id+'"><img src="'+a+'" class="avatar pa" style="left:10px;top:10px;width:40px;height:40px;border-radius:50%"><div class="com2" style="margin-left:50px;margin-top:10px"><div class="cname">'+n+' <span style="font-size:8px;color:#ccc;">'+t+'</span></div><div class="cnameb" style="word-break: break-word;border:1px solid #feecd5;background:#fff5e6;padding:5px 10px;border-radius:5px;margin:5px 0;display: inline-block;">'+m+'</div></div></div>')
                 }
@@ -106,7 +111,7 @@
                     
                 }
             }
-            ws.onmessage = function(e){
+            var onmessage = ws.onmessage = function(e){
                 try{
                     var d = JSON.parse(e.data)
                     switch(d.type){
@@ -131,7 +136,7 @@
                             status.room = 1
                             $('.create').remove();
                             $('.Rlist,.comment').html('')
-                            $('title').text(channeInfo.title)
+                            $('title').text(channeInfo.user_name + '的直播室')
                             $('.Rroom').show()
                             if(!channeInfo.isShow && d.user_id != user_id ){
                                 $('.Rroom .bot input').css('width',$('body').width()-20)
@@ -143,7 +148,7 @@
                             }
                             // 
                             $('.top .name').text(channeInfo.title)
-                            $('.top .masterName').html('粉丝数：'+channeInfo.viewer_num+' <span style="margin:0 20px">|</span> 总人气：'+channeInfo.attention_num)
+                            $('.top .masterName').html('粉丝数：'+channeInfo.attention_num+' <span style="margin:0 20px">|</span> 总人气：'+channeInfo.viewer_num)
                             $('.top img').attr('src',channeInfo.head_photo)
                             showHis();
                             $(window).unbind('scroll').bind('scroll',function(){
@@ -170,6 +175,9 @@
                             ws.send(JSON.stringify({'type':'enterChannel',channel_id:id}))
                             break;
                         }
+                        case 'close':{
+                            $('.bot').hide()
+                        }
                         default:
                             break;
 
@@ -181,7 +189,7 @@
 
             }
 
-            ws.onopen = function(){
+            var onopen = ws.onopen = function(){
 
                 $.ajax({
                     url: "http://121.43.111.114:8280/StockService/api/live/get/"+id,
@@ -193,11 +201,16 @@
                     success: function(w) {
 
                         if(!w.success){alert(w.msg);return}
-
+                        if(w.data.status == 2){
+                            $('.bot').hide()
+                        }
                         channeInfo = w.data
 
                         if(w.data.loginUser){
                             ws.send(JSON.stringify({'type':'login',id:channeInfo.loginUser.uid,name:channeInfo.loginUser.uname,'avatar':channeInfo.loginUser.head_photo}))
+                            if(w.data.loginUser.uid == w.data.user_id && w.data.status != 2){
+                                $('.closem').show()
+                            }
                         }else{
                             ws.send(JSON.stringify({'type':'login'}))
                         }
@@ -208,8 +221,15 @@
                 // ws.send(JSON.stringify({'type':'getList'}))
                 // 
             }
-            ws.onclose = function(){
+            var onclose = ws.onclose = function(){
                 alert('连接断开')
+                // console.log('1秒后重连')
+                // setTimeout(function(){
+                //     ws = new WebSocket('ws://www.disuyijian.com:7778');
+                //     ws.onmessage = onmessage
+                //     ws.onopen = onopen
+                //     ws.onclose = onclose
+                // },1000)
             }
 
             $('.create').click(function(){
@@ -224,6 +244,24 @@
                 channeInfo.user_id;
                 if(channeInfo.loginUser)ws.send(JSON.stringify({type:'sendMessage',mode:1,money:m}))
                 // alert('某某某打赏了'+m+'元')
+            }
+
+            var closem = function(){
+
+                $.ajax({
+                    url: "http://121.43.111.114:8280/StockService/api/live/end/"+id,
+                    data: {},
+                    type: "post",
+                    beforeSend: function(xhr){
+                        xhr.setRequestHeader('token',token)
+                    },
+                    success: function(w) {
+
+                        if(!w.success){alert(w.msg);return}
+                        ws.send(JSON.stringify({'type':'close',channel_id:channeInfo.id}))
+                        alert('关闭成功')
+                    }
+                })
             }
         
         
