@@ -206,8 +206,12 @@ let z = function(obj,con){
 
             let mode = obj.mode || 0;
             let money = obj.money || 0
+            let url = obj.url || ''
             if(mode == 1){
                 obj.message = '<span style="color:blueviolet">'+user.name+'</span>打赏主播<span style="color:red">￥'+obj.money + '</span>'
+            }
+            else if(mode == 2){
+                obj.message = '<img src="'+obj.url+'" />'
             }
 
             if(!obj.message)return;

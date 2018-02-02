@@ -22,6 +22,10 @@
                 bottom: 20px;
                 left: 4px;
             }
+            img{
+                max-width: 100%;
+                max-height: 300px;
+            }
             .master.my::after{
                 left: auto;
                 right: 5px;
@@ -45,6 +49,8 @@
 
     </head>
     <body style="background:#f5f5f5">
+        <span aria-hidden="true" class="pf ifr ifrx" style="background: red;border-radius: 50%;color: #fff;right:10px;top:10px;z-index:9999;display:none;padding: 6px;line-height: 9px;">×</span>
+        <iframe src="" class="pf ifr" style="width:100%;height:100%;z-index:9998;display:none;padding:0;border:0"></iframe>
         <div class="container">
             <div class="Rlist"></div>
             <div class="Rroom row dn">
@@ -58,10 +64,12 @@
                 <div class="comment dt" style="padding-bottom:60px;padding-top:70px;width:100%">
                     
                 </div>
-
+                <input id="inputFile" type="file" name="file" style="display:none" accept="image/*">
                 <div class="bot pf" style="bottom:0;left:0;height:50px;width:100%;background:#fff">
                     <form action="" onsubmit="">
-                        <input id="input" name="y" style="margin-top:10px;width: calc(100% - 65px);border:solid #ccc 1px;line-height:30px;padding:0 10px;margin-left:10px;outline:0">
+                        
+                        <input id="inputSub" name="y" class="sub" style="margin-top:10px;width: calc(100% - 100px);border:solid #ccc 1px;line-height:30px;padding:0 10px;margin-left:10px;outline:0">
+                        <a class="pa tup" style="background:rgb(107, 14, 126);border-radius:50%;color:#fff;border:0;padding:3px 6px;right:56px;bottom:12px">图</a>
                         <a class="pa shang" style="display:none;background:red;border-radius:50%;color:#fff;border:0;padding:3px 6px;right:15px;bottom:12px">赏</a>
                         <a class="pa fasong" style="display:inline;background:red;border-radius:10%;color:#fff;border:0;padding:3px 6px;right:10px;bottom:12px">发送</a>
                     </form>
@@ -72,6 +80,17 @@
         </div>
             
         <script>
+            var curl = function(url,data,func,raw){
+                var a = {
+                    url:url,data:data,dataType:'json',
+                    type:raw || (data && JSON.stringify(data) !="{}")?'post':'get',
+                    success:function(d){
+                        if(func instanceof Function)func(d);
+                    }
+                };
+                raw && (a.contentType = a.processData = false);
+                $.ajax(a);
+            }
             //判断是否为苹果
             var isIPHONE = navigator.userAgent.toUpperCase().indexOf('IPHONE')!= -1;
 
@@ -98,7 +117,7 @@
             }
 
             if(isIPHONE){
-                var input = new objBlur('input');
+                var input = new objBlur('inputSub');
                 input=null;
             }
             var status = {};
@@ -113,15 +132,15 @@
 
             $('form').submit(function(e){
                 e.preventDefault()
-                var m = $('input').val()
+                var m = $('input.sub').val()
                 ws.send(JSON.stringify({'type':'sendMessage',message:m}))
-                $('input').val('').blur()
+                $('input.sub').val('').blur()
             });
             $('.fasong').click(function(){
                 $('form').submit()
             })
 
-            $('input').blur(function(){
+            $('input.sub').blur(function(){
                 if(user_id && channeInfo.isShow && channeInfo.loginUser.uid != channeInfo.user_id){
                     setTimeout(function(){
                         $('.fasong').hide();
@@ -130,11 +149,50 @@
                     
                 }
             })
-            $('input').focus(function(){
+            $('input.sub').focus(function(){
                 if(user_id && channeInfo.isShow && channeInfo.loginUser.uid != channeInfo.user_id){
                     $('.fasong').show();
                     $('.shang').hide();
                 }
+            })
+            $('.tup').bind('click',function(){
+                $('#inputFile').click()
+            })
+            $('#inputFile').change(function(){
+
+                var form = new FormData();
+                form.append("file",$(this)[0].files[0])
+                $('input.sub').attr('disabled','disabled')
+                var val = $('input.sub').val()
+                $('input.sub').val('')
+                $('input.sub').attr('placeholder','上传中...')
+                $('.tup').unbind('click')
+                curl('http://121.43.111.114:8280/StockService/api/pic/upload_json',form,function(w){
+                    $('input.sub').val(val)
+                    $('input.sub').removeAttr('placeholder')
+                    $('input.sub').removeAttr('disabled')
+                    $('.tup').bind('click',function(){
+                        $('#inputFile').click()
+                    })
+                    ws.send(JSON.stringify({type:'sendMessage',mode:2,url:w.absolutePath}))
+                },1)
+            })
+
+            var cttttt = function(w){
+
+                w.unbind('click').bind('click',function(){
+                    // e.preventDefault()
+                    if(!$(this)[0].src || $(this).attr('iserror')){
+                        alert('图片获取失败')
+                        return
+                    }
+                    // $('iframe')[0].src = $(this)[0].src
+                    // $('.ifr').show()
+                    window.pic && pic.show && window.pic.show($(this)[0].src)
+                })
+            }
+            $('.ifrx').click(function(){
+                $('.ifr').hide()
             })
 
             var showHis = function(){
@@ -143,6 +201,9 @@
 
             var appendMessage = function(d,p){
                 let a=d.user_avatar,n=d.user_name,t=d.time,m=d.message.replace('<','&lt;').replace('>','&gt;')
+                if(d.mode == 2){
+                    m=d.message
+                }
                 var w;
                 if(d.mode == 1){
                     w = $('<div class="com pr col-xs-12" user-id="'+d.user_id+'"><div class="com2" style="margin-left:10px;margin-top:10px"><div class="cnameb ddscc" style="position:relative;word-break: break-word;border:1px solid #feecd5;background:#fff;padding:10px 20px;border-radius:5px;margin:5px 0;display: inline-block;">'+d.message+'</div></div></div>')
@@ -157,6 +218,10 @@
                     w.find('.avatar').parent().addClass('master')
                     
                 }
+                w.find('.cnameb img').error(function(e){
+                    $(this).attr('iserror',1)
+                })
+                cttttt(w.find('.cnameb img'))
             }
             var onmessage = ws.onmessage = function(e){
                 try{
@@ -186,8 +251,7 @@
                             $('title').text(channeInfo.user_name + '的直播室')
                             $('.Rroom').show()
                             if(!channeInfo.isShow && d.user_id != user_id ){
-                                // $('.Rroom .bot input').css('width',$('body').width()-20)
-                                $('.Rroom .bot a').css('display','none')
+                                $('.Rroom .bot a.shang').css('display','none')
                                 $('.Rroom .bot a.fasong').css('display','inline')
                             }else{
                                 $('.Rroom .bot a.shang').unbind('click').bind('click',function(){
@@ -204,7 +268,7 @@
                                     showHis()
                                 }
                             })
-                            $('input').blur()
+                            $('input.sub').blur()
                             break;
                         case 'getMessage':
                             appendMessage(d.data)
