@@ -45,7 +45,6 @@
 
     </head>
     <body style="background:#f5f5f5">
-        <button class="create"></button>
         <div class="container">
             <div class="Rlist"></div>
             <div class="Rroom row dn">
@@ -62,9 +61,9 @@
 
                 <div class="bot pf" style="bottom:0;left:0;height:50px;width:100%;background:#fff">
                     <form action="" onsubmit="">
-                        <input name="y" style="margin-top:10px;width: calc(100% - 55px);border:solid #ccc 1px;line-height:30px;padding:0 10px;margin-left:10px;outline:0">
-                        <a class="pa" style="display:inline;background:red;border-radius:50%;color:#fff;border:0;padding:3px 6px;right:10px;bottom:12px">赏</a>
-                        <a class="pa" style="display:none;background:blue;border-radius:50%;color:#fff;border:0;padding:3px 6px;right:10px;bottom:12px">问</a>
+                        <input id="input" name="y" style="margin-top:10px;width: calc(100% - 65px);border:solid #ccc 1px;line-height:30px;padding:0 10px;margin-left:10px;outline:0">
+                        <a class="pa shang" style="display:none;background:red;border-radius:50%;color:#fff;border:0;padding:3px 6px;right:15px;bottom:12px">赏</a>
+                        <a class="pa fasong" style="display:inline;background:red;border-radius:10%;color:#fff;border:0;padding:3px 6px;right:10px;bottom:12px">发送</a>
                     </form>
                 </div>
 
@@ -73,12 +72,41 @@
         </div>
             
         <script>
+            //判断是否为苹果
+            var isIPHONE = navigator.userAgent.toUpperCase().indexOf('IPHONE')!= -1;
+
+            // 元素失去焦点隐藏iphone的软键盘
+            function objBlur(id,time){
+                if(typeof id != 'string') throw new Error('objBlur()参数错误');
+                var obj = document.getElementById(id),
+                    time = time || 300,
+                    docTouchend = function(event){
+                        if(event.target!= obj){
+                            setTimeout(function(){
+                                obj.blur();
+                                document.removeEventListener('touchend', docTouchend,false);
+                            },time);
+                        }
+                    };
+                if(obj){
+                    obj.addEventListener('focus', function(){
+                        document.addEventListener('touchend', docTouchend,false);
+                    },false);
+                }else{
+                    throw new Error('objBlur()没有找到元素');
+                }
+            }
+
+            if(isIPHONE){
+                var input = new objBlur('input');
+                input=null;
+            }
             var status = {};
             status.room = 0;
             var p = new URL(location);
             var id = p.searchParams.get('id') || '';
             var token = p.searchParams.get('token') || '';
-            var ws = new WebSocket('ws://www.disuyijian.com:7778');
+            var ws = new WebSocket('ws://121.199.8.244:7778');
             var page = 1;
             var user_id;
             var channeInfo;
@@ -87,8 +115,27 @@
                 e.preventDefault()
                 var m = $('input').val()
                 ws.send(JSON.stringify({'type':'sendMessage',message:m}))
-                $('input').val('')
+                $('input').val('').blur()
             });
+            $('.fasong').click(function(){
+                $('form').submit()
+            })
+
+            $('input').blur(function(){
+                if(user_id && channeInfo.isShow && channeInfo.loginUser.uid != channeInfo.user_id){
+                    setTimeout(function(){
+                        $('.fasong').hide();
+                        $('.shang').show();
+                    },200)
+                    
+                }
+            })
+            $('input').focus(function(){
+                if(user_id && channeInfo.isShow && channeInfo.loginUser.uid != channeInfo.user_id){
+                    $('.fasong').show();
+                    $('.shang').hide();
+                }
+            })
 
             var showHis = function(){
                 ws.send(JSON.stringify({type:'getHistory',page:page++,channel_id:channeInfo.id}))
@@ -139,10 +186,11 @@
                             $('title').text(channeInfo.user_name + '的直播室')
                             $('.Rroom').show()
                             if(!channeInfo.isShow && d.user_id != user_id ){
-                                $('.Rroom .bot input').css('width',$('body').width()-20)
+                                // $('.Rroom .bot input').css('width',$('body').width()-20)
                                 $('.Rroom .bot a').css('display','none')
+                                $('.Rroom .bot a.fasong').css('display','inline')
                             }else{
-                                $('.Rroom .bot a').unbind('click').bind('click',function(){
+                                $('.Rroom .bot a.shang').unbind('click').bind('click',function(){
                                     location.href='money'
                                 })
                             }
@@ -156,6 +204,7 @@
                                     showHis()
                                 }
                             })
+                            $('input').blur()
                             break;
                         case 'getMessage':
                             appendMessage(d.data)
